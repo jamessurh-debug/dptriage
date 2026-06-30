@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vendor Privacy AI Triage & Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 3px solid #ffffff; width: 24px; height: 24px; -webkit-animation: spin 1s linear infinite; animation: spin 1s linear infinite; }
+        @-webkit-keyframes spin { 0% { -webkit-transform: rotate(0deg); } 100% { -webkit-transform: rotate(360deg); } }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .markdown-body ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 0.5rem; }
+        .markdown-body strong { font-weight: 600; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="text-slate-800 h-screen flex flex-col">
+
+    <!-- Header & Navigation -->
+    <header class="bg-slate-900 text-white p-4 shadow-md flex justify-between items-center shrink-0">
+        <div class="flex items-center gap-3">
+            <i class="fa-solid fa-shield-halved text-blue-400 text-2xl"></i>
+            <h1 class="text-xl font-bold tracking-tight">Privacy Triage & Tracker</h1>
+        </div>
+        <nav class="flex gap-2">
+            <button id="nav-request" class="px-4 py-2 rounded-md bg-blue-600 text-white font-medium text-sm transition-colors shadow-sm"><i class="fa-solid fa-paper-plane mr-2"></i> Submit Request</button>
+            <button id="nav-dashboard" class="px-4 py-2 rounded-md hover:bg-slate-800 text-slate-300 font-medium text-sm transition-colors"><i class="fa-solid fa-table-list mr-2"></i> DP Dashboard</button>
+        </nav>
+    </header>
+
+    <!-- MAIN VIEWS -->
+    <main class="flex-1 overflow-hidden relative">
+
+        <!-- ==================== VIEW 1: REQUESTOR FORM ==================== -->
+        <div id="view-request" class="absolute inset-0 overflow-y-auto flex justify-center p-6 bg-slate-50">
+            <div class="w-full max-w-2xl bg-white border border-slate-200 shadow-sm rounded-xl p-8 h-fit">
+                <h2 class="text-2xl font-bold mb-2 text-slate-800">New Vendor Request</h2>
+                <p class="text-slate-500 mb-6 text-sm">Submit a new vendor for data privacy review. An AI assessment will be automatically generated for the DP team.</p>
+                
+                <form id="triageForm" class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Vendor Name <span class="text-red-500">*</span></label>
+                        <input type="text" id="vendorName" required placeholder="e.g., Flexera, Mailchimp, Datadog" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Service Description & Use Case <span class="text-red-500">*</span></label>
+                        <textarea id="serviceDesc" required rows="4" placeholder="Briefly describe what the business wants to use this software for..." class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Does this involve AI/ML? <span class="text-slate-400 font-normal">(Optional context)</span></label>
+                        <select id="aiContext" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                            <option value="Unknown / Not Sure">Unknown / Not Sure</option>
+                            <option value="Yes - Dedicated AI tool">Yes - Dedicated AI tool (e.g., ChatGPT)</option>
+                            <option value="Yes - Built-in AI features">Yes - Built-in AI features (e.g., Notion AI)</option>
+                            <option value="No - Standard software">No - Standard software</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Document Links (Google Drive, etc.)</label>
+                        <div id="linksContainer">
+                            <div class="flex gap-2">
+                                <input type="url" name="docLink" placeholder="https://drive.google.com/..." class="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                        </div>
+                        <button type="button" id="addLinkBtn" class="mt-2 text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"><i class="fa-solid fa-plus"></i> Add another link</button>
+                    </div>
+
+                    <div class="bg-blue-50 text-blue-800 text-xs p-3 rounded-md flex items-start gap-2">
+                        <i class="fa-solid fa-circle-info mt-0.5"></i>
+                        <p>The AI will map your inputs and web research against the standard DP Fact Find requirements (Purpose, TOMs, DSRs, Transfers).</p>
+                    </div>
+
+                    <button type="submit" id="submitBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex justify-center items-center gap-2 mt-4">
+                        <span id="btnText">Submit to DP Team</span>
+                        <i id="btnIcon" class="fa-solid fa-paper-plane"></i>
+                        <div id="btnSpinner" class="spinner hidden"></div>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ==================== VIEW 2: DP DASHBOARD ==================== -->
+        <div id="view-dashboard" class="hidden absolute inset-0 overflow-hidden flex flex-col bg-slate-50">
+            <div class="p-6 border-b border-slate-200 bg-white flex justify-between items-center shrink-0">
+                <h2 class="text-2xl font-bold text-slate-800">Review Tracker</h2>
+                <div class="flex gap-2">
+                    <button id="filter-active" class="px-4 py-1.5 rounded-full bg-blue-100 text-blue-800 font-medium text-sm transition-colors border border-blue-200">Active</button>
+                    <button id="filter-archived" class="px-4 py-1.5 rounded-full bg-white text-slate-600 hover:bg-slate-100 font-medium text-sm transition-colors border border-slate-200">Archived</button>
+                </div>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-6">
+                <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 font-semibold">
+                                <th class="p-4">Vendor</th>
+                                <th class="p-4">AI Risk Tier</th>
+                                <th class="p-4">Traffic Light Status</th>
+                                <th class="p-4">Reviewer</th>
+                                <th class="p-4">Submitted</th>
+                                <th class="p-4 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashboard-table-body" class="divide-y divide-slate-100">
+                            <!-- Populated via Firebase -->
+                        </tbody>
+                    </table>
+                    <div id="dashboard-empty" class="hidden py-12 text-center text-slate-500">
+                        <i class="fa-solid fa-inbox text-4xl mb-3 opacity-20"></i>
+                        <p>No requests found in this view.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== VIEW 3: DP REVIEW CONSOLE ==================== -->
+        <div id="view-detail" class="hidden absolute inset-0 bg-slate-50 flex flex-col md:flex-row overflow-hidden">
+            
+            <!-- Back button overlay -->
+            <button id="backToDashboardBtn" class="absolute top-4 left-4 z-50 bg-white border border-slate-200 shadow-sm rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors flex items-center gap-2">
+                <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+            </button>
+
+            <!-- LEFT: AI Assessment (Read Only) -->
+            <div class="w-full md:w-1/2 h-full overflow-y-auto p-6 pt-16 border-r border-slate-200 bg-white hide-scrollbar">
+                <h3 class="text-sm uppercase tracking-wider text-slate-500 font-bold mb-4">AI Triage & Fact-Find Assessment</h3>
+                <div id="exportableContent" class="space-y-6">
+                    <!-- Dynamic AI Content inserted here -->
+                </div>
+            </div>
+
+            <!-- RIGHT: DP Tracker Form -->
+            <div class="w-full md:w-1/2 h-full overflow-y-auto p-6 pt-16 bg-slate-50">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <div class="flex justify-between items-center mb-6 border-b pb-4 border-slate-100">
+                        <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-list-check text-blue-500"></i> DP Official Review</h3>
+                        <span id="detail-status-badge" class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">NEW</span>
+                    </div>
+
+                    <form id="dpReviewForm" class="space-y-5">
+                        <input type="hidden" id="detail-doc-id">
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Reviewer Name</label>
+                                <input type="text" id="dpName" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Date of Initial Review</label>
+                                <input type="date" id="dpDateReview" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none text-sm">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Review Conclusion</label>
+                            <select id="dpConclusion" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none text-sm bg-white">
+                                <option value="Pending Review">Pending Review</option>
+                                <option value="Factfind Required">Factfind Required</option>
+                                <option value="DPIA Required">DPIA Required</option>
+                                <option value="No Further Action">No Further Action (Approved)</option>
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Date BO Notified</label>
+                                <input type="date" id="dpDateNotified" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Contract Status</label>
+                                <select id="dpContractStatus" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none text-sm bg-white">
+                                    <option value="Not Started">Not Started</option>
+                                    <option value="Under Negotiation">Under Negotiation</option>
+                                    <option value="Signed">Signed</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3 pt-2 border-t border-slate-100">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">DPIA Document Link</label>
+                                <input type="url" id="dpDpiaLink" placeholder="Link to OneTrust/Drive..." class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Signed Contract / DPA Link</label>
+                                <input type="url" id="dpContractLink" placeholder="Link to repository..." class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Internal Notes</label>
+                                <textarea id="dpNotes" rows="3" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none text-sm resize-none"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3 pt-4">
+                            <button type="button" id="saveReviewBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors shadow-sm">Save Changes</button>
+                            <button type="button" id="archiveBtn" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-medium py-2 px-4 rounded-md transition-colors shadow-sm"><i class="fa-solid fa-box-archive mr-2"></i> Mark Completed & Archive</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modals & Toasts -->
+    <div id="modalOverlay" class="fixed inset-0 bg-slate-900/50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 text-center">
+            <i id="modalIcon" class="fa-solid text-4xl mb-4"></i>
+            <h3 id="modalTitle" class="text-lg font-bold text-slate-800 mb-2"></h3>
+            <p id="modalMsg" class="text-slate-600 mb-6 text-sm"></p>
+            <button onclick="document.getElementById('modalOverlay').classList.add('hidden')" class="bg-slate-800 text-white px-4 py-2 rounded-lg hover:bg-slate-700 w-full font-medium">Close</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Environment Variables
+        const apiKey = ""; 
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // Firebase Init
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        let currentUser = null;
+        let unsubscribeRequests = null;
+        let allRequests = [];
+        let viewMode = 'active'; // 'active' or 'archived'
+
+        const initAuth = async () => {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+        };
+
+        initAuth();
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                listenToRequests();
+            }
+        });
+
+        // --- Navigation Logic ---
+        const navRequest = document.getElementById('nav-request');
+        const navDash = document.getElementById('nav-dashboard');
+        const viewReq = document.getElementById('view-request');
+        const viewDash = document.getElementById('view-dashboard');
+        const viewDetail = document.getElementById('view-detail');
+
+        function switchView(viewName) {
+            viewReq.classList.add('hidden');
+            viewDash.classList.add('hidden');
+            viewDetail.classList.add('hidden');
+            
+            navRequest.classList.replace('bg-blue-600', 'bg-transparent');
+            navRequest.classList.replace('text-white', 'text-slate-300');
+            navRequest.classList.replace('hover:bg-slate-800', 'bg-transparent');
+            
+            navDash.classList.replace('bg-blue-600', 'bg-transparent');
+            navDash.classList.replace('text-white', 'text-slate-300');
+            navDash.classList.replace('hover:bg-slate-800', 'bg-transparent');
+
+            if (viewName === 'request') {
+                viewReq.classList.remove('hidden');
+                navRequest.classList.add('bg-blue-600', 'text-white');
+                navRequest.classList.remove('text-slate-300');
+                navDash.classList.add('hover:bg-slate-800');
+            } else if (viewName === 'dashboard') {
+                viewDash.classList.remove('hidden');
+                navDash.classList.add('bg-blue-600', 'text-white');
+                navDash.classList.remove('text-slate-300');
+                navRequest.classList.add('hover:bg-slate-800');
+                renderDashboard();
+            } else if (viewName === 'detail') {
+                viewDetail.classList.remove('hidden');
+            }
+        }
+
+        navRequest.addEventListener('click', () => switchView('request'));
+        navDash.addEventListener('click', () => switchView('dashboard'));
+        document.getElementById('backToDashboardBtn').addEventListener('click', () => switchView('dashboard'));
+        
+        document.getElementById('filter-active').addEventListener('click', (e) => {
+            viewMode = 'active';
+            e.target.classList.replace('bg-white', 'bg-blue-100');
+            e.target.classList.replace('text-slate-600', 'text-blue-800');
+            e.target.classList.replace('border-slate-200', 'border-blue-200');
+            
+            const arch = document.getElementById('filter-archived');
+            arch.classList.replace('bg-blue-100', 'bg-white');
+            arch.classList.replace('text-blue-800', 'text-slate-600');
+            arch.classList.replace('border-blue-200', 'border-slate-200');
+            renderDashboard();
+        });
+
+        document.getElementById('filter-archived').addEventListener('click', (e) => {
+            viewMode = 'archived';
+            e.target.classList.replace('bg-white', 'bg-blue-100');
+            e.target.classList.replace('text-slate-600', 'text-blue-800');
+            e.target.classList.replace('border-slate-200', 'border-blue-200');
+            
+            const act = document.getElementById('filter-active');
+            act.classList.replace('bg-blue-100', 'bg-white');
+            act.classList.replace('text-blue-800', 'text-slate-600');
+            act.classList.replace('border-blue-200', 'border-slate-200');
+            renderDashboard();
+        });
+
+        // --- UI Utilities ---
+        function showModal(type, title, msg) {
+            const overlay = document.getElementById('modalOverlay');
+            const icon = document.getElementById('modalIcon');
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalMsg').textContent = msg;
+            
+            if (type === 'success') {
+                icon.className = 'fa-solid fa-circle-check text-green-500 text-5xl mb-4';
+            } else {
+                icon.className = 'fa-solid fa-circle-exclamation text-red-500 text-5xl mb-4';
+            }
+            overlay.classList.remove('hidden');
+        }
+
+        // Add dynamic links
+        document.getElementById('addLinkBtn').addEventListener('click', () => {
+            const container = document.getElementById('linksContainer');
+            const wrapper = document.createElement('div');
+            wrapper.className = 'flex gap-2 mt-2';
+            wrapper.innerHTML = `
+                <input type="url" name="docLink" placeholder="https://..." class="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                <button type="button" class="px-3 py-2 text-slate-400 hover:text-red-500" onclick="this.parentElement.remove()"><i class="fa-solid fa-trash"></i></button>
+            `;
+            container.appendChild(wrapper);
+        });
+
+        // --- EXTENDED AI SCHEMA (Mapped to Fact Find Template) ---
+        const schema = {
+            type: "OBJECT",
+            properties: {
+                intelligenceSummary: { type: "STRING", description: "General summary of the vendor's service and overall privacy posture." },
+                dataBreachHistory: { type: "STRING", description: "Specific details of any data breaches or ransomware incidents in the past 3 years. If none, state 'No major incidents publicly disclosed in the last 3 years.'" },
+                regulatoryFines: { type: "STRING", description: "Specific details of any regulatory fines, privacy lawsuits, or enforcement actions. If none, state 'No recent fines or enforcement actions found.'" },
+                riskTier: { type: "STRING" },
+                personalDataFlag: { type: "STRING" },
+                dataCategories: { type: "ARRAY", items: { type: "STRING" } },
+                specialCategoryFlag: { type: "STRING" },
+                dataSubjects: { type: "ARRAY", items: { type: "STRING" } },
+                purposeOfProcessing: { type: "STRING", description: "Clear statement of the purpose of data processing" },
+                automatedDecisionMaking: { type: "STRING", description: "Does the service involve automated decision making or profiling?" },
+                aiUsageFlag: { type: "STRING", description: "Details on if the vendor uses Generative AI, LLMs, or other ML models." },
+                aiModelTraining: { type: "STRING", description: "Does the vendor use customer data to train their models? Is there an opt-out available?" },
+                aiTransparency: { type: "STRING", description: "Transparency regarding AI sub-processors (e.g., OpenAI, Anthropic) and AI specific terms." },
+                hqLocation: { type: "STRING" },
+                role: { type: "STRING" },
+                crossBorder: { type: "STRING" },
+                transferMechanism: { type: "STRING" },
+                subProcessors: { type: "ARRAY", items: { type: "STRING" } },
+                thirdPartyAccess: { type: "STRING", description: "Parties with access to the data other than direct sub-processors" },
+                securityMeasures: { type: "ARRAY", items: { type: "STRING" }, description: "e.g., Pseudonymisation, Encryption, Segregation, Access Control, Infosec Policies" },
+                dataRetention: { type: "STRING", description: "How long is data kept, where, and how is it erased?" },
+                dsrSupport: { type: "STRING", description: "Are they able to respond to valid data subject access or erasure requests?" },
+                standardDPA: { type: "STRING" },
+                privacyPolicy: { type: "STRING" },
+                certifications: { type: "ARRAY", items: { type: "STRING" } },
+                confidenceScore: { type: "STRING" },
+                missingInformation: { type: "STRING" }
+            },
+            required: ["intelligenceSummary", "dataBreachHistory", "regulatoryFines", "riskTier", "personalDataFlag", "dataCategories", "role", "purposeOfProcessing"]
+        };
+
+        async function fetchWithRetry(url, options, maxRetries = 5) {
+            const delays = [1000, 2000, 4000, 8000, 16000];
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    return await response.json();
+                } catch (e) {
+                    if (i === maxRetries - 1) throw e;
+                    await new Promise(resolve => setTimeout(resolve, delays[i]));
+                }
+            }
+        }
+
+
+        // --- REQUESTOR: Submit Form ---
+        document.getElementById('triageForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(!currentUser) return showModal('error', 'Auth Error', 'System is connecting to database, please try again in a moment.');
+
+            const vendor = document.getElementById('vendorName').value.trim();
+            const desc = document.getElementById('serviceDesc').value.trim();
+            const aiContext = document.getElementById('aiContext').value;
+            const linkInputs = document.querySelectorAll('input[name="docLink"]');
+            const docLinks = Array.from(linkInputs).map(i => i.value.trim()).filter(v => v !== '');
+            
+            // UI Loading state
+            const btn = document.getElementById('submitBtn');
+            const btnText = document.getElementById('btnText');
+            const btnIcon = document.getElementById('btnIcon');
+            const btnSpinner = document.getElementById('btnSpinner');
+            btn.disabled = true; btnText.textContent = "Extracting Fact-Find Data...";
+            btnIcon.classList.add('hidden'); btnSpinner.classList.remove('hidden');
+
+            try {
+                const promptText = `Analyze Vendor: ${vendor}\nUse Case: ${desc}\nUser stated AI usage context: ${aiContext}\nLinks: ${docLinks.join(', ')}`;
+                
+                // Updated System Prompt mapping to the Fact Find CSV fields
+                const systemPrompt = `You are a Data Privacy Counsel AI. Your task is to pre-fill a Privacy Fact-Find Checklist based on the provided user input, uploaded text, and live web research. 
+Use Google Search to find: "${vendor} privacy policy", "${vendor} DPA sub-processors", "${vendor} data retention deletion", "${vendor} data breach fine", and "${vendor} AI model training customer data". 
+Specifically extract information mapping to these Fact-Find areas: 
+1. Technical and Organisational Security Measures (TOMs) like Pseudonymisation, Encryption, Segregation, and Access Control.
+2. Data Retention policies (How long kept and how erased).
+3. Ability to respond to Data Subject Rights (DSR/Erasure).
+4. Identify if Automated Decision Making / Profiling occurs.
+5. Third parties with access to data.
+6. Data Breach History (Specifically looking at the past 3 years).
+7. Regulatory Fines & Enforcement actions related to privacy.
+8. AI Usage: Do they use customer data to train AI models? Do they use AI sub-processors? Is there an opt-out?
+Analyze context and search results to output the strict JSON schema.`;
+
+                const payload = {
+                    contents: [{ parts: [{ text: promptText }] }],
+                    systemInstruction: { parts: [{ text: systemPrompt }] },
+                    tools: [{ google_search: {} }],
+                    generationConfig: { responseMimeType: "application/json", responseSchema: schema }
+                };
+
+                const response = await fetchWithRetry(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+                    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
+                );
+
+                const resultText = response.candidates?.[0]?.content?.parts?.[0]?.text;
+                const aiData = JSON.parse(resultText);
+
+                // Save to Firestore
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'vendor_requests'), {
+                    vendorName: vendor,
+                    serviceDesc: desc,
+                    docLinks: docLinks,
+                    isArchived: false,
+                    aiAssessment: aiData,
+                    dpData: {
+                        reviewerName: '',
+                        dateReview: '',
+                        conclusion: 'Pending Review',
+                        dateNotified: '',
+                        contractStatus: 'Not Started',
+                        dpiaLink: '',
+                        contractLink: '',
+                        notes: ''
+                    },
+                    createdAt: serverTimestamp()
+                });
+
+                document.getElementById('triageForm').reset();
+                showModal('success', 'Request Submitted', `The AI has completed the extended Fact-Find for ${vendor}. The DP team has been notified.`);
+
+            } catch (error) {
+                console.error(error);
+                showModal('error', 'Processing Error', 'Failed to analyze and save vendor. Please check API configuration.');
+            } finally {
+                btn.disabled = false; btnText.textContent = "Submit to DP Team";
+                btnIcon.classList.remove('hidden'); btnSpinner.classList.add('hidden');
+            }
+        });
+
+
+        // --- DP TEAM: Dashboard & Tracker ---
+        function listenToRequests() {
+            const q = collection(db, 'artifacts', appId, 'public', 'data', 'vendor_requests');
+            unsubscribeRequests = onSnapshot(q, (snapshot) => {
+                allRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                allRequests.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+                renderDashboard();
+            }, (error) => {
+                console.error("Firestore error:", error);
+            });
+        }
+
+        function getTrafficLight(req) {
+            const dp = req.dpData;
+            if (req.isArchived) return { text: 'Completed', class: 'bg-green-100 text-green-800' };
+            if (dp.contractStatus === 'Under Negotiation') return { text: 'Negotiation', class: 'bg-yellow-100 text-yellow-800' };
+            if (dp.conclusion === 'Factfind Required') return { text: 'Factfind', class: 'bg-orange-100 text-orange-800' };
+            if (dp.conclusion === 'DPIA Required') return { text: 'DPIA', class: 'bg-red-100 text-red-800' };
+            if (dp.conclusion === 'No Further Action') return { text: 'Approved (Pending Sig)', class: 'bg-teal-100 text-teal-800' };
+            return { text: 'New / Pending', class: 'bg-blue-100 text-blue-800' };
+        }
+
+        function renderDashboard() {
+            const tbody = document.getElementById('dashboard-table-body');
+            const emptyState = document.getElementById('dashboard-empty');
+            tbody.innerHTML = '';
+
+            const filtered = allRequests.filter(r => viewMode === 'archived' ? r.isArchived : !r.isArchived);
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                filtered.forEach(req => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-50 transition-colors border-b border-slate-100';
+                    
+                    const tl = getTrafficLight(req);
+                    const risk = req.aiAssessment?.riskTier || 'Unknown';
+                    const riskIcon = risk.includes('High') ? '🔴' : (risk.includes('Medium') ? '⚠️' : '🟢');
+                    
+                    const dateStr = req.createdAt ? new Date(req.createdAt.toMillis()).toLocaleDateString() : 'Just now';
+                    const reviewer = req.dpData.reviewerName || '<span class="text-slate-400 italic">Unassigned</span>';
+
+                    tr.innerHTML = `
+                        <td class="p-4 font-medium text-slate-800">${req.vendorName}</td>
+                        <td class="p-4 text-sm">${riskIcon} ${risk.replace(/🔴|⚠️|🟢/g, '').trim()}</td>
+                        <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${tl.class}">${tl.text}</span></td>
+                        <td class="p-4 text-sm">${reviewer}</td>
+                        <td class="p-4 text-sm text-slate-500">${dateStr}</td>
+                        <td class="p-4 text-right">
+                            <button class="text-blue-600 hover:text-blue-800 font-medium text-sm px-3 py-1 rounded-md hover:bg-blue-50 transition-colors" data-id="${req.id}">Review</button>
+                        </td>
+                    `;
+                    
+                    tr.querySelector('button').addEventListener('click', () => openDetailView(req.id));
+                    tbody.appendChild(tr);
+                });
+            }
+        }
+
+
+        // --- DP TEAM: Detail View & Update ---
+        function openDetailView(id) {
+            const req = allRequests.find(r => r.id === id);
+            if(!req) return;
+
+            // Populate Form
+            document.getElementById('detail-doc-id').value = req.id;
+            document.getElementById('dpName').value = req.dpData.reviewerName || '';
+            document.getElementById('dpDateReview').value = req.dpData.dateReview || '';
+            document.getElementById('dpConclusion').value = req.dpData.conclusion || 'Pending Review';
+            document.getElementById('dpDateNotified').value = req.dpData.dateNotified || '';
+            document.getElementById('dpContractStatus').value = req.dpData.contractStatus || 'Not Started';
+            document.getElementById('dpDpiaLink').value = req.dpData.dpiaLink || '';
+            document.getElementById('dpContractLink').value = req.dpData.contractLink || '';
+            document.getElementById('dpNotes').value = req.dpData.notes || '';
+
+            // Status Badge
+            const tl = getTrafficLight(req);
+            const badge = document.getElementById('detail-status-badge');
+            badge.className = `px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${tl.class}`;
+            badge.textContent = tl.text;
+
+            // Render EXTENDED AI Output (Left Panel)
+            const ai = req.aiAssessment;
+            const formatArray = (arr) => Array.isArray(arr) ? (arr.length > 0 ? arr.join(', ') : 'None extracted') : (arr || 'Unknown');
+            
+            const formatText = (text) => {
+                if (!text) return 'None detected.';
+                let formatted = text.replace(/\n- /g, '<br>• ').replace(/\n\*/g, '<br>• ');
+                if(formatted.startsWith('-') || formatted.startsWith('*')) formatted = '• ' + formatted.substring(1);
+                return formatted;
+            };
+
+            let summaryHTML = formatText(ai.intelligenceSummary);
+            let breachHTML = formatText(ai.dataBreachHistory);
+            let finesHTML = formatText(ai.regulatoryFines);
+
+            document.getElementById('exportableContent').innerHTML = `
+                <div class="mb-4 pb-4 border-b border-slate-100">
+                    <h2 class="text-2xl font-bold text-slate-800">${req.vendorName}</h2>
+                    <p class="text-sm text-slate-500 mt-1 italic"><strong>Requestor Context:</strong> ${req.serviceDesc}</p>
+                </div>
+                
+                <div class="bg-slate-800 rounded-lg p-5 text-white text-sm mb-6 shadow-sm border border-slate-700">
+                    <h4 class="font-bold text-base mb-4 flex items-center gap-2 border-b border-slate-700 pb-2"><i class="fa-solid fa-satellite-dish text-yellow-400"></i> Vendor Risk Intelligence</h4>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <h5 class="text-slate-400 font-semibold uppercase text-[10px] tracking-wider mb-1">General Intelligence</h5>
+                            <div class="markdown-body opacity-90 leading-relaxed">${summaryHTML}</div>
+                        </div>
+                        
+                        <div class="bg-red-900/30 border border-red-500/20 rounded p-3">
+                            <h5 class="text-red-400 font-semibold uppercase text-[10px] tracking-wider mb-1 flex items-center gap-1.5"><i class="fa-solid fa-user-shield"></i> Data Breach History (Past 3 Years)</h5>
+                            <div class="markdown-body opacity-90 leading-relaxed">${breachHTML}</div>
+                        </div>
+                        
+                        <div class="bg-orange-900/30 border border-orange-500/20 rounded p-3">
+                            <h5 class="text-orange-400 font-semibold uppercase text-[10px] tracking-wider mb-1 flex items-center gap-1.5"><i class="fa-solid fa-scale-balanced"></i> Regulatory Fines & Enforcement</h5>
+                            <div class="markdown-body opacity-90 leading-relaxed">${finesHTML}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- Fact Find: Processing Context & Data Trigger -->
+                    <div class="bg-blue-50/50 p-4 rounded-lg border border-blue-100">
+                        <h4 class="font-semibold text-blue-800 mb-3 text-sm uppercase flex items-center gap-2"><i class="fa-solid fa-database"></i> Processing Context</h4>
+                        <div class="space-y-2">
+                            <p class="text-sm"><strong>Purpose of Processing:</strong> ${ai.purposeOfProcessing || 'Not specified'}</p>
+                            <p class="text-sm"><strong>Automated Decision Making:</strong> ${ai.automatedDecisionMaking || 'Unknown'}</p>
+                            <div class="h-px w-full bg-blue-100 my-2"></div>
+                            <p class="text-sm"><strong>Personal Data Involved:</strong> ${ai.personalDataFlag}</p>
+                            <p class="text-sm"><strong>Categories:</strong> ${formatArray(ai.dataCategories)}</p>
+                            <p class="text-sm"><strong>Special/Sensitive:</strong> ${ai.specialCategoryFlag}</p>
+                            <p class="text-sm"><strong>Data Subjects:</strong> ${formatArray(ai.dataSubjects)}</p>
+                        </div>
+                    </div>
+
+                    <!-- Fact Find: AI & Machine Learning -->
+                    <div class="bg-indigo-50/50 p-4 rounded-lg border border-indigo-100">
+                        <h4 class="font-semibold text-indigo-800 mb-3 text-sm uppercase flex items-center gap-2"><i class="fa-solid fa-robot text-indigo-500"></i> AI & Machine Learning</h4>
+                        <div class="space-y-2">
+                            <p class="text-sm"><strong>AI Features / Usage:</strong> ${ai.aiUsageFlag || 'Not specified'}</p>
+                            <p class="text-sm"><strong>Model Training on Customer Data:</strong> ${ai.aiModelTraining || 'Not specified'}</p>
+                            <p class="text-sm"><strong>AI Transparency & Sub-processors:</strong> ${ai.aiTransparency || 'Not specified'}</p>
+                        </div>
+                    </div>
+
+                    <!-- Fact Find: Security, Retention & Rights -->
+                    <div class="bg-green-50/50 p-4 rounded-lg border border-green-100">
+                        <h4 class="font-semibold text-green-800 mb-3 text-sm uppercase flex items-center gap-2"><i class="fa-solid fa-shield-halved"></i> Security & Retention (TOMs)</h4>
+                        <div class="space-y-2">
+                            <p class="text-sm"><strong>Security Measures:</strong> ${formatArray(ai.securityMeasures)}</p>
+                            <p class="text-sm"><strong>Certifications:</strong> ${formatArray(ai.certifications)}</p>
+                            <div class="h-px w-full bg-green-100 my-2"></div>
+                            <p class="text-sm"><strong>Data Retention / Erasure:</strong> ${ai.dataRetention || 'Unknown'}</p>
+                            <p class="text-sm"><strong>DSR Capabilities:</strong> ${ai.dsrSupport || 'Unknown'}</p>
+                        </div>
+                    </div>
+
+                    <!-- Fact Find: Mechanics & Transfers -->
+                    <div class="bg-purple-50/50 p-4 rounded-lg border border-purple-100">
+                        <h4 class="font-semibold text-purple-800 mb-3 text-sm uppercase flex items-center gap-2"><i class="fa-solid fa-network-wired"></i> Roles & Transfers</h4>
+                        <div class="space-y-2">
+                            <p class="text-sm"><strong>Legal Role:</strong> ${ai.role} (HQ: ${ai.hqLocation || 'Unknown'})</p>
+                            <p class="text-sm"><strong>Cross-Border Transfer:</strong> ${ai.crossBorder}</p>
+                            <p class="text-sm"><strong>Transfer Mechanism:</strong> ${ai.transferMechanism}</p>
+                            <div class="h-px w-full bg-purple-100 my-2"></div>
+                            <p class="text-sm"><strong>Sub-processors:</strong> ${formatArray(ai.subProcessors)}</p>
+                            <p class="text-sm"><strong>Other Third-Party Access:</strong> ${ai.thirdPartyAccess || 'Unknown'}</p>
+                        </div>
+                    </div>
+
+                    <div class="text-sm text-slate-600 border-t border-slate-100 pt-4">
+                        <p><strong>DPA Link:</strong> ${ai.standardDPA && ai.standardDPA.startsWith('http') ? `<a href="${ai.standardDPA}" target="_blank" class="text-blue-600 hover:underline">View Document</a>` : ai.standardDPA}</p>
+                        <p><strong>Privacy Policy:</strong> ${ai.privacyPolicy && ai.privacyPolicy.startsWith('http') ? `<a href="${ai.privacyPolicy}" target="_blank" class="text-blue-600 hover:underline">View Document</a>` : ai.privacyPolicy}</p>
+                    </div>
+                </div>
+            `;
+
+            const archiveBtn = document.getElementById('archiveBtn');
+            if(req.isArchived) {
+                archiveBtn.innerHTML = '<i class="fa-solid fa-rotate-left mr-2"></i> Unarchive Request';
+                archiveBtn.classList.replace('bg-slate-800', 'bg-slate-500');
+            } else {
+                archiveBtn.innerHTML = '<i class="fa-solid fa-box-archive mr-2"></i> Mark Completed & Archive';
+                archiveBtn.classList.replace('bg-slate-500', 'bg-slate-800');
+            }
+
+            switchView('detail');
+        }
+
+        // Save DP Review
+        async function saveReview(archiveToggle = false) {
+            if(!currentUser) return;
+            const id = document.getElementById('detail-doc-id').value;
+            const req = allRequests.find(r => r.id === id);
+            
+            const updatedDpData = {
+                reviewerName: document.getElementById('dpName').value,
+                dateReview: document.getElementById('dpDateReview').value,
+                conclusion: document.getElementById('dpConclusion').value,
+                dateNotified: document.getElementById('dpDateNotified').value,
+                contractStatus: document.getElementById('dpContractStatus').value,
+                dpiaLink: document.getElementById('dpDpiaLink').value,
+                contractLink: document.getElementById('dpContractLink').value,
+                notes: document.getElementById('dpNotes').value
+            };
+
+            try {
+                const btn = document.getElementById('saveReviewBtn');
+                const oldText = btn.textContent;
+                btn.textContent = "Saving...";
+                
+                let isArchivedStatus = req.isArchived;
+                if (archiveToggle) {
+                    isArchivedStatus = !isArchivedStatus;
+                }
+
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'vendor_requests', id), {
+                    dpData: updatedDpData,
+                    isArchived: isArchivedStatus
+                });
+                
+                btn.textContent = oldText;
+                
+                if (archiveToggle) {
+                    showModal('success', 'Tracker Updated', isArchivedStatus ? 'Request successfully archived.' : 'Request unarchived and active.');
+                    switchView('dashboard');
+                } else {
+                    const badge = document.getElementById('detail-status-badge');
+                    badge.className = 'px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-green-100 text-green-800';
+                    badge.textContent = 'SAVED';
+                    setTimeout(() => openDetailView(id), 1500);
+                }
+            } catch (err) {
+                console.error(err);
+                showModal('error', 'Save Failed', 'Could not update the database.');
+            }
+        }
+
+        document.getElementById('saveReviewBtn').addEventListener('click', () => saveReview(false));
+        document.getElementById('archiveBtn').addEventListener('click', () => saveReview(true));
+
+    </script>
+</body>
+</html>
